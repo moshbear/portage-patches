@@ -1,0 +1,81 @@
+diff -aur wine-1.3.14/dlls/msi/action.c wine-new/dlls/msi/action.c
+--- wine-1.3.14/dlls/msi/action.c	2011-02-18 13:28:55.000000000 -0500
++++ wine-new/dlls/msi/action.c	2011-03-02 21:32:12.697785573 -0500
+@@ -7386,6 +7386,59 @@
+     return rc;
+ }
+ 
++/* Dummy thread just to initialize an MTA for the benefit of custom action DLLs */
++static HANDLE dummy_thread_sync_event = NULL;
++static HANDLE dummy_thread_stop_event = NULL;
++static HANDLE dummy_thread_handle = NULL;
++
++DWORD WINAPI dummy_thread_proc(void *arg)
++{
++    HRESULT hr;
++    DWORD dwWaitResult;
++
++    hr = CoInitializeEx(0, COINIT_MULTITHREADED);
++    if (FAILED(hr))
++        WARN("CoInitializeEx failed %u\n", hr);
++
++    SetEvent(dummy_thread_sync_event);
++    dwWaitResult = WaitForSingleObject(dummy_thread_stop_event, INFINITE);
++
++    if (dwWaitResult != WAIT_OBJECT_0)
++        ERR("WaitForSingleObject failed?\n");
++
++    CoUninitialize();
++    return 0;
++}
++
++static void start_dummy_thread(void)
++{
++    if (dummy_thread_handle) return;
++
++    dummy_thread_sync_event = CreateEventA(NULL, TRUE, FALSE, "DummyThreadUpAndRunning");
++    if (dummy_thread_sync_event == NULL)
++        ERR("Can't create dummy thread sync event\n");
++    dummy_thread_stop_event = CreateEventA(NULL, TRUE, FALSE, "DummyThreadStop");
++    if (dummy_thread_stop_event == NULL)
++        ERR("Can't create dummy thread stop event\n");
++    dummy_thread_handle = CreateThread(NULL, 0, dummy_thread_proc, NULL, 0, NULL);
++    if (dummy_thread_handle == NULL)
++        ERR("Can't create dummy thread\n");
++
++    WaitForSingleObject(dummy_thread_sync_event, INFINITE);
++}
++
++static void end_dummy_thread(void)
++{
++    SetEvent(dummy_thread_stop_event);
++    WaitForSingleObject(dummy_thread_handle, INFINITE);
++
++    CloseHandle(dummy_thread_sync_event);
++    CloseHandle(dummy_thread_stop_event);
++    CloseHandle(dummy_thread_handle);
++
++    dummy_thread_handle = NULL;
++}
++
+ /****************************************************
+  * TOP level entry points
+  *****************************************************/
+@@ -7459,6 +7512,8 @@
+     msi_adjust_privilege_properties( package );
+     msi_set_context( package );
+ 
++    start_dummy_thread();
++
+     if (needs_ui_sequence( package))
+     {
+         package->script->InWhatSequence |= SEQUENCE_UI;
+@@ -7488,6 +7543,8 @@
+     /* finish up running custom actions */
+     ACTION_FinishCustomActions(package);
+ 
++    end_dummy_thread();
++
+     if (rc == ERROR_SUCCESS && package->need_reboot)
+         return ERROR_SUCCESS_REBOOT_REQUIRED;
+ 

@@ -1,0 +1,136 @@
+Splits output of print_download_info onto two lines on narrow screens.
+
+Author: Andrey M0shbear: andrey at moshbear dot net
+Date: 2011-08-(09-10)
+Revision: 2
+
+diff -aur rtorrent-0.8.6/src/display/utils.cc rtorrent/src/display/utils.cc
+--- rtorrent-0.8.6/src/display/utils.cc	2009-11-12 03:03:47.000000000 -0500
++++ rtorrent/src/display/utils.cc	2011-08-09 18:47:27.647941380 -0400
+@@ -133,9 +133,9 @@
+ char*
+ print_download_info(char* first, char* last, core::Download* d) {
+   if (!d->download()->is_open())
+-    first = print_buffer(first, last, "[CLOSED]  ");
++    first = print_buffer(first, last, "[STOPPED] ");
+   else if (!d->download()->is_active())
+-    first = print_buffer(first, last, "[OPEN]    ");
++    first = print_buffer(first, last, "[PAUSED]  ");
+   else
+     first = print_buffer(first, last, "          ");
+ 
+@@ -146,9 +146,10 @@
+                          (double)d->download()->bytes_done() / (double)(1 << 20),
+                          (double)d->download()->file_list()->size_bytes() / (double)(1 << 20));
+   
+-  first = print_buffer(first, last, " Rate: %5.1f / %5.1f KB Uploaded: %7.1f MB",
++  first = print_buffer(first, last, " Rate: %5.1f / %5.1f KB%cUploaded: %7.1f MB",
+                        (double)d->download()->up_rate()->rate() / (1 << 10),
+                        (double)d->download()->down_rate()->rate() / (1 << 10),
++		       print_download_delimiter,
+                        (double)d->download()->up_rate()->total() / (1 << 20));
+ 
+   if (d->download()->is_active() && !d->is_done()) {
+diff -aur rtorrent-0.8.6/src/display/utils.h rtorrent/src/display/utils.h
+--- rtorrent-0.8.6/src/display/utils.h	2009-11-12 03:03:47.000000000 -0500
++++ rtorrent/src/display/utils.h	2011-08-09 18:26:17.187965963 -0400
+@@ -70,6 +70,7 @@
+ char*       print_download_status(char* first, char* last, core::Download* d);
+ char*       print_download_time_left(char* first, char* last, core::Download* d);
+ char*       print_download_percentage_done(char* first, char* last, core::Download* d);
++const char  print_download_delimiter = '\x1D';
+ 
+ char*       print_client_version(char* first, char* last, const torrent::ClientInfo& clientInfo);
+ 
+diff -aur rtorrent-0.8.6/src/display/window_download_list.cc rtorrent/src/display/window_download_list.cc
+--- rtorrent-0.8.6/src/display/window_download_list.cc	2011-08-09 16:03:06.502943546 -0400
++++ rtorrent/src/display/window_download_list.cc	2011-08-10 21:15:43.467570559 -0400
+@@ -35,6 +35,7 @@
+ //           3185 Skoppum, NORWAY
+ 
+ #include "config.h"
++#include <cstring>
+ 
+ #include <rak/algorithm.h>
+ #include <torrent/rate.h>
+@@ -117,8 +118,20 @@
+     
+     if( pos >= m_canvas->height() ) break;
+ 
+-    position = print_download_info(buffer, last, *range.first);
+-    m_canvas->print(0, pos++, "%c %s", range.first == m_view->focus() ? '*' : ' ', buffer);
++    if ( Canvas::term_size().first >= 120 ) {
++    	position = print_download_info(buffer, last, *range.first);
++    	*strchr(buffer, print_download_delimiter) = ' ';
++	m_canvas->print(0, pos++, "%c %s", range.first == m_view->focus() ? '*' : ' ', buffer);
++    } else {
++    	char x_buffer[120];
++	char* x_last = x_buffer + 120;
++    	print_download_info(x_buffer, x_last, *range.first);
++	char* split_pos = strchr(x_buffer, print_download_delimiter);
++    	*split_pos = '\0';
++	m_canvas->print(0, pos++, "%c %s", range.first == m_view->focus() ? '*' : ' ', x_buffer);
++	if ( pos >= m_canvas->height() ) break;
++	m_canvas->print(0, pos++, "%c %s", range.first == m_view->focus() ? '*' : ' ', split_pos + 1);
++    }
+ 
+     if( pos >= m_canvas->height() ) break;
+     position = print_download_status(buffer, last, *range.first);
+diff -aur rtorrent-0.8.6/src/display/window_download_statusbar.cc rtorrent/src/display/window_download_statusbar.cc
+--- rtorrent-0.8.6/src/display/window_download_statusbar.cc	2009-11-12 03:03:47.000000000 -0500
++++ rtorrent/src/display/window_download_statusbar.cc	2011-08-10 21:16:36.954571190 -0400
+@@ -35,6 +35,7 @@
+ //           3185 Skoppum, NORWAY
+ 
+ #include "config.h"
++#include <cstring>
+ 
+ #include <torrent/rate.h>
+ #include <torrent/tracker_list.h>
+@@ -51,7 +52,7 @@
+ namespace display {
+ 
+ WindowDownloadStatusbar::WindowDownloadStatusbar(core::Download* d) :
+-  Window(new Canvas, 0, 0, 3, extent_full, extent_static),
++  Window(new Canvas, 0, 0, 4, extent_full, extent_static),
+   m_download(d) {
+ }
+ 
+@@ -64,9 +65,22 @@
+   char buffer[m_canvas->width()];
+   char* position;
+   char* last = buffer + m_canvas->width() - 2;
++  int canvas_pos = 0;
+ 
+-  position = print_download_info(buffer, last, m_download);
+-  m_canvas->print(0, 0, "%s", buffer);
++  if ( Canvas::term_size().first >= 120 ) {
++  	position = print_download_info(buffer, last, m_download);
++  	*strchr(buffer, print_download_delimiter) = ' ';
++	m_canvas->print(0, canvas_pos++,"%c", '\n');
++	m_canvas->print(0, canvas_pos++, "%s", buffer);
++  } else {
++  	char x_buffer[120];
++	char* x_last = x_buffer + 120;
++	print_download_info(x_buffer, x_last, m_download);
++	char* split_pos = strchr(x_buffer, print_download_delimiter);
++  	*split_pos = '\0';
++	m_canvas->print(0, canvas_pos++, "%s", x_buffer);
++	m_canvas->print(0, canvas_pos++, "%s", split_pos + 1);
++  }
+ 
+   position = buffer + std::min<ptrdiff_t>(std::max(snprintf(buffer, last - buffer, "Peers: %i(%i) Min/Max: %i/%i Uploads: %i U/I/C/A: %i/%i/%i/%i Failed: %i",
+                                         (int)m_download->download()->connection_list()->size(),
+@@ -81,10 +95,10 @@
+                                         (int)m_download->chunks_failed()),
+                                0), last - buffer);
+ 
+-  m_canvas->print(0, 1, "%s", buffer);
++  m_canvas->print(0, canvas_pos++, "%s", buffer);
+ 
+   position = print_download_status(buffer, last, m_download);
+-  m_canvas->print(0, 2, "[%c:%i] %s",
++  m_canvas->print(0, canvas_pos++, "[%c:%i] %s",
+                   m_download->tracker_list()->has_active() ? 'C' : ' ',
+                   (int)(m_download->download()->tracker_list()->time_next_connection()),
+                   buffer);

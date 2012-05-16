@@ -1,0 +1,12 @@
+--- src/core/download_list.cc	2009-11-12 03:03:44.000000000 -0500
++++ src/core/download_list.cc	2011-05-20 12:15:44.020966422 -0400
+@@ -569,8 +569,7 @@
+ 
+   rpc::commands.call_catch("event.download.finished", rpc::make_target(download), torrent::Object(), "Download event action failed: ");
+ 
+-  if (download->resume_flags() != ~uint32_t())
+-    throw torrent::internal_error("DownloadList::confirm_finished(...) download->resume_flags() != ~uint32_t().");
++  download->set_resume_flags(~uint32_t());
+ 
+   if (!download->is_active() && rpc::call_command_value("d.get_state", rpc::make_target(download)) == 1)
+     resume(download, torrent::Download::start_no_create | torrent::Download::start_skip_tracker | torrent::Download::start_keep_baseline);

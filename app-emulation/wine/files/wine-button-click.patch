@@ -1,0 +1,43 @@
+diff --git a/dlls/wined3d/device.c b/dlls/wined3d/device.c
+index 6c4814d..cdbde45 100644
+--- a/dlls/wined3d/device.c
++++ b/dlls/wined3d/device.c
+@@ -1773,7 +1773,7 @@ static LONG fullscreen_exstyle(LONG exstyle)
+     return exstyle;
+ }
+ 
+-static void WINAPI IWineD3DDeviceImpl_SetupFullscreenWindow(IWineD3DDevice *iface, HWND window, UINT w, UINT h)
++void WINAPI IWineD3DDeviceImpl_SetupFullscreenWindow(IWineD3DDevice *iface, HWND window, UINT w, UINT h)
+ {
+     IWineD3DDeviceImpl *device = (IWineD3DDeviceImpl *)iface;
+     BOOL filter_messages;
+diff --git a/dlls/wined3d/swapchain.c b/dlls/wined3d/swapchain.c
+index 2c186a2..4cce7f8 100644
+--- a/dlls/wined3d/swapchain.c
++++ b/dlls/wined3d/swapchain.c
+@@ -540,6 +540,13 @@ HRESULT swapchain_init(IWineD3DSwapChainImpl *swapchain, WINED3DSURFTYPE surface
+     swapchain->win_handle = window;
+     swapchain->device_window = window;
+ 
++    if (!present_parameters->Windowed && window)
++    {
++        IWineD3DDeviceImpl_SetupFullscreenWindow((IWineD3DDevice *)device,window,
++                present_parameters->BackBufferWidth,
++                present_parameters->BackBufferHeight);
++    }
++
+     wined3d_get_adapter_display_mode(device->wined3d, adapter->ordinal, &mode);
+     swapchain->orig_width = mode.Width;
+     swapchain->orig_height = mode.Height;
+diff --git a/dlls/wined3d/wined3d_private.h b/dlls/wined3d/wined3d_private.h
+index 0487a78..1d80f94 100644
+--- a/dlls/wined3d/wined3d_private.h
++++ b/dlls/wined3d/wined3d_private.h
+@@ -1784,6 +1784,7 @@ void device_switch_onscreen_ds(IWineD3DDeviceImpl *device, struct wined3d_contex
+ void device_update_stream_info(IWineD3DDeviceImpl *device, const struct wined3d_gl_info *gl_info) DECLSPEC_HIDDEN;
+ void IWineD3DDeviceImpl_FindTexUnitMap(IWineD3DDeviceImpl *This) DECLSPEC_HIDDEN;
+ void IWineD3DDeviceImpl_MarkStateDirty(IWineD3DDeviceImpl *This, DWORD state) DECLSPEC_HIDDEN;
++void WINAPI IWineD3DDeviceImpl_SetupFullscreenWindow(IWineD3DDevice *iface, HWND window, UINT w, UINT h) DECLSPEC_HIDDEN;
+ 
+ static inline BOOL isStateDirty(struct wined3d_context *context, DWORD state)
+ {

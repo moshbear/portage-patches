@@ -1,0 +1,52 @@
+Updates nomenclature of frames field for M:S:F markers from 'centiseconds' to
+'frames'.
+
+--- mp3cue.h	2004-12-30 11:24:07.000000000 -0500
++++ mp3cue.h	2011-05-14 07:56:50.879697752 -0400
+@@ -15,13 +15,12 @@
+ /*M
+   \emph{CUE index structure.}
+ 
+-  This is reverse engineered and by no means correct. I also don't
+-  know what the correct name for ``centiseconds'' is.
++  This is reverse engineered and by no means correct.
+ **/
+ typedef struct mp3cue_index_s {
+   unsigned int minutes;
+   unsigned int seconds;
+-  unsigned int centiseconds;
++  unsigned int frames;
+ } mp3cue_index_t;
+ 
+ /*M
+--- mp3cue-main.c	2005-02-15 14:54:17.000000000 -0500
++++ mp3cue-main.c	2011-05-14 07:55:49.905615796 -0400
+@@ -178,7 +178,7 @@
+     /* end time in msecs */
+     unsigned long end = (((cuefile.tracks[i].index.minutes * 60) +
+                            cuefile.tracks[i].index.seconds) * 100 +
+-                           cuefile.tracks[i].index.centiseconds) * 10;
++                           cuefile.tracks[i].index.frames) * 10;
+     char from_buf[256], to_buf[256];
+     format_time(current, from_buf, sizeof(from_buf));
+     format_time(end, to_buf, sizeof(to_buf));
+--- mp3cue.y	2005-02-15 14:54:17.000000000 -0500
++++ mp3cue.y	2011-05-14 07:56:37.436615806 -0400
+@@ -113,7 +113,7 @@
+   yymp3_cue_file->tracks[yymp3_cue_file->track_number].performer[0] = '\0';
+   yymp3_cue_file->tracks[yymp3_cue_file->track_number].index.minutes = 0;
+   yymp3_cue_file->tracks[yymp3_cue_file->track_number].index.seconds = 0;
+-  yymp3_cue_file->tracks[yymp3_cue_file->track_number].index.centiseconds = 0;
++  yymp3_cue_file->tracks[yymp3_cue_file->track_number].index.frames = 0;
+ }
+ ;
+ 
+@@ -137,7 +137,7 @@
+     if (yymp3_cue_file->track_number > 0) {
+       yymp3_cue_file->tracks[yymp3_cue_file->track_number-1].index.minutes = $3;
+       yymp3_cue_file->tracks[yymp3_cue_file->track_number-1].index.seconds = $5;
+-      yymp3_cue_file->tracks[yymp3_cue_file->track_number-1].index.centiseconds = $7;
++      yymp3_cue_file->tracks[yymp3_cue_file->track_number-1].index.frames = $7;
+     }
+   }
+ }

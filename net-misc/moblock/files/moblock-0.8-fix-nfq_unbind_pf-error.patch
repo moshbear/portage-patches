@@ -1,0 +1,28 @@
+diff -au moblock/MoBlock.c MoBlock-0.8//MoBlock.c
+--- moblock/MoBlock.c	2006-03-22 12:44:31.000000000 -0500
++++ MoBlock-0.8//MoBlock.c	2011-03-29 12:34:19.656502091 -0400
+@@ -33,6 +33,7 @@
+ #include <sys/socket.h>
+ #include <arpa/inet.h>
+ #include <linux/netfilter_ipv4.h>
++#include <linux/version.h>
+ #include <signal.h>
+ #include <regex.h>
+ 
+@@ -502,12 +503,16 @@
+ 
+ 	if (nfq_unbind_pf(h, AF_INET) < 0) {
+ 		fprintf(logfile, "error during nfq_unbind_pf()\n");
++#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 23)
+ 		exit(-1);
++#endif
+ 	}
+ 
+ 	if (nfq_bind_pf(h, AF_INET) < 0) {
+ 		fprintf(logfile, "Error during nfq_bind_pf()\n");
++#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 23)
+ 		exit(-1);
++#endif
+ 	}
+ 
+ 	fprintf(logfile,"NFQUEUE: binding to queue '%hd'\n", queuenum);
