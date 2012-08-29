@@ -1,0 +1,15 @@
+--- dlls/wined3d/swapchain.c
++++ dlls/wined3d/swapchain.c
+@@ -94,1 +94,1 @@ void x11_copy_to_screen(const struct wined3d_swapchain *swapchain, const RECT *rect)
+-    window = swapchain->win_handle;
++    window = GetDesktopWindow();
+--- server/window.c
++++ server/window.c
+@@ -2310,7 +2310,6 @@ DECL_HANDLER(update_window_zorder)
+         if (ptr->win_region && !rect_in_region( ptr->win_region, &req->rect )) continue;
+         /* found a window obscuring the rectangle, now move win above this one */
+         /* making sure to not violate the topmost rule */
+-        if (!(ptr->ex_style & WS_EX_TOPMOST) || (win->ex_style & WS_EX_TOPMOST))
+         {
+             list_remove( &win->entry );
+	     list_add_before( &ptr->entry, &win->entry );

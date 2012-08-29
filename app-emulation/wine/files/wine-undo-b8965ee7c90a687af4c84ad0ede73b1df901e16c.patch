@@ -1,0 +1,21 @@
+diff -aur wine2/dlls/msi/custom.c wine/dlls/msi/custom.c
+--- wine2/dlls/msi/custom.c	2011-12-22 02:59:06.767398055 -0500
++++ wine/dlls/msi/custom.c	2011-12-22 03:00:08.554343926 -0500
+@@ -578,6 +578,8 @@
+             TRACE("calling %s\n", debugstr_w( function ) );
+             handle_msi_break( function );
+ 
++            CoInitializeEx(NULL, COINIT_MULTITHREADED);
++
+             __TRY
+             {
+                 r = CUSTOMPROC_wrapper( fn, hPackage );
+@@ -590,6 +592,8 @@
+             }
+             __ENDTRY;
+ 
++            CoUninitialize();
++
+             MsiCloseHandle( hPackage );
+         }
+         else

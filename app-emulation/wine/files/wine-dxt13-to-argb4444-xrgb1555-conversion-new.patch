@@ -1,7 +1,7 @@
-diff --git a/dlls/wined3d/surface_base.c b/dlls/wined3d/surface_base.c
+diff --git a/dlls/wined3d/surface.c b/dlls/wined3d/surface.c
 index b9dd634..13b2a83 100644
---- a/dlls/wined3d/surface_base.c
-+++ b/dlls/wined3d/surface_base.c
+--- a/dlls/wined3d/surface.c
++++ b/dlls/wined3d/surface.c
 @@ -759,6 +759,300 @@ static void convert_yuy2_x8r8g8b8(const BYTE *src, BYTE *dst,
      }
  }
