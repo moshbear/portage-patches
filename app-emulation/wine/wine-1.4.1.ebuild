@@ -1,6 +1,6 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/app-emulation/wine/wine-1.5.5.ebuild,v 1.1 2012/05/28 04:02:24 tetromino Exp $
+# $Header: /var/cvsroot/gentoo-x86/app-emulation/wine/wine-1.4.1.ebuild,v 1.13 2013/10/13 21:10:09 tetromino Exp $
 
 EAPI="5"
 
@@ -14,22 +14,22 @@ if [[ ${PV} == "9999" ]] ; then
 else
 	MY_P="${PN}-${PV/_/-}"
 	SRC_URI="mirror://sourceforge/${PN}/Source/${MY_P}.tar.bz2"
-	KEYWORDS="-* ~amd64 ~x86 ~x86-fbsd"
+	KEYWORDS="-* amd64 x86 ~x86-fbsd"
 	S=${WORKDIR}/${MY_P}
 fi
 
-GV="1.5"
-DESCRIPTION="free implementation of Windows(tm) on Unix"
+GV="1.4"
+DESCRIPTION="Free implementation of Windows(tm) on Unix"
 HOMEPAGE="http://www.winehq.org/"
 SRC_URI="${SRC_URI}
 	gecko? (
-		mirror://sourceforge/wine/wine_gecko-${GV}-x86.msi
-		win64? ( mirror://sourceforge/wine/wine_gecko-${GV}-x86_64.msi )
+		mirror://sourceforge/${PN}/Wine%20Gecko/${GV}/wine_gecko-${GV}-x86.msi
+		win64? ( mirror://sourceforge/${PN}/Wine%20Gecko/${GV}/wine_gecko-${GV}-x86_64.msi )
 	)"
 
 LICENSE="LGPL-2.1"
 SLOT="0"
-IUSE="alsa capi cups custom-cflags elibc_glibc fontconfig +gecko gnutls gphoto2 gsm gstreamer hardened jpeg lcms ldap mp3 ncurses nls odbc openal opencl +opengl +oss +perl png samba scanner selinux ssl test +threads +truetype udisks v4l +win32 +win64 +X xcomposite xinerama xml"
+IUSE="alsa capi cups custom-cflags elibc_glibc fontconfig +gecko gnutls gphoto2 gsm gstreamer jpeg lcms ldap mp3 ncurses nls odbc openal opencl +opengl +oss +perl png +prelink samba scanner selinux ssl test +threads +truetype udisks v4l +win32 +win64 +X xcomposite xinerama xml"
 REQUIRED_USE="elibc_glibc? ( threads )" #286560
 RESTRICT="test" #72375
 
@@ -152,45 +152,48 @@ MLIB_DEPS="amd64? (
 			) )
 	>=sys-kernel/linux-headers-2.6
 	)"
-RDEPEND="truetype? ( >=media-libs/freetype-2.0.0 media-fonts/corefonts )
+RDEPEND="truetype? ( >=media-libs/freetype-2.0.0 )
 	perl? ( dev-lang/perl dev-perl/XML-Simple )
 	capi? ( net-dialup/capi4k-utils )
-	ncurses? ( >=sys-libs/ncurses-5.2 )
-	fontconfig? ( media-libs/fontconfig )
-	gphoto2? ( media-libs/libgphoto2 )
-	openal? ( media-libs/openal )
+	ncurses? ( >=sys-libs/ncurses-5.2:= )
+	fontconfig? ( media-libs/fontconfig:= )
+	gphoto2? ( media-libs/libgphoto2:= )
+	openal? ( media-libs/openal:= )
 	udisks? (
 		sys-apps/dbus
 		sys-fs/udisks:0
 	)
-	gnutls? ( net-libs/gnutls )
-	gstreamer? ( media-libs/gstreamer media-libs/gst-plugins-base )
+	gnutls? ( net-libs/gnutls:= )
+	gstreamer? ( media-libs/gstreamer:0.10 media-libs/gst-plugins-base:0.10 )
 	X? (
+		x11-libs/libICE
+		x11-libs/libSM
 		x11-libs/libXcursor
 		x11-libs/libXrandr
 		x11-libs/libXi
-		x11-libs/libXmu
 		x11-libs/libXxf86vm
-		x11-apps/xmessage
 	)
 	xinerama? ( x11-libs/libXinerama )
 	alsa? ( media-libs/alsa-lib )
-	cups? ( net-print/cups )
+	cups? ( net-print/cups:= )
 	opencl? ( virtual/opencl )
-	opengl? ( virtual/opengl )
-	gsm? ( media-sound/gsm )
-	jpeg? ( virtual/jpeg )
-	ldap? ( net-nds/openldap )
-	lcms? ( =media-libs/lcms-1* )
+	opengl? (
+		virtual/glu
+		virtual/opengl
+	)
+	gsm? ( media-sound/gsm:= )
+	jpeg? ( virtual/jpeg:0= )
+	ldap? ( net-nds/openldap:= )
+	lcms? ( media-libs/lcms:0= )
 	mp3? ( >=media-sound/mpg123-1.5.0 )
 	nls? ( sys-devel/gettext )
-	odbc? ( dev-db/unixODBC )
+	odbc? ( dev-db/unixODBC:= )
 	samba? ( >=net-fs/samba-3.0.25 )
 	selinux? ( sec-policy/selinux-wine )
 	xml? ( dev-libs/libxml2 dev-libs/libxslt )
-	scanner? ( media-gfx/sane-backends )
-	ssl? ( dev-libs/openssl )
-	png? ( media-libs/libpng )
+	scanner? ( media-gfx/sane-backends:= )
+	ssl? ( dev-libs/openssl:0= )
+	png? ( media-libs/libpng:0= )
 	v4l? ( media-libs/libv4l )
 	!win64? ( ${MLIB_DEPS} )
 	win32? ( ${MLIB_DEPS} )
@@ -202,22 +205,37 @@ DEPEND="${RDEPEND}
 		x11-proto/xf86vidmodeproto
 	)
 	xinerama? ( x11-proto/xineramaproto )
-	!hardened? ( sys-devel/prelink )
+	prelink? ( sys-devel/prelink )
 	virtual/pkgconfig
 	virtual/yacc
 	sys-devel/flex"
 
+wine_build_environment_check() {
+	[[ ${MERGE_TYPE} = "binary" ]] && return 0
+
+	if use win64 && [[ $(( $(gcc-major-version) * 100 + $(gcc-minor-version) )) -lt 404 ]]; then
+		eerror "You need gcc-4.4+ to build 64-bit wine"
+		eerror
+		return 1
+	fi
+
+	if use win32 && use opencl && [[ x$(eselect opencl show 2> /dev/null) = "xintel" ]]; then
+		eerror "You cannot build wine with USE=opencl because intel-ocl-sdk is 64-bit only."
+		eerror "See https://bugs.gentoo.org/487864 for more details."
+		eerror
+		return 1
+	fi
+}
+
+pkg_pretend() {
+	wine_build_environment_check || die
+}
+
+pkg_setup() {
+	wine_build_environment_check || die
+}
+
 src_unpack() {
-	if use win64 ; then
-		[[ $(( $(gcc-major-version) * 100 + $(gcc-minor-version) )) -lt 404 ]] \
-			&& die "you need gcc-4.4+ to build 64bit wine"
-	fi
-
-	if use win32 && use opencl; then
-		[[ x$(eselect opencl show) = "xintel" ]] &&
-			die "Cannot build wine[opencl,win32]: intel-ocl-sdk is 64-bit only" # 403947
-	fi
-
 	if [[ ${PV} == "9999" ]] ; then
 		git-2_src_unpack
 	else
@@ -226,10 +244,17 @@ src_unpack() {
 }
 
 src_prepare() {
+	local md5="$(md5sum server/protocol.def)"
 	epatch "${FILESDIR}"/${PN}-1.1.15-winegcc.patch #260726
 	epatch "${FILESDIR}"/${PN}-1.4_rc2-multilib-portage.patch #395615
-	epatch ${FILESDIR}"/${PN}-ddraw.patch"
+
+	has_version ">=sys-devel/bison-3.0" && epatch "${FILESDIR}"/${PN}-1.4-bison3.patch
+
 	epatch_user #282735
+	if [[ "$(md5sum server/protocol.def)" != "${md5}" ]]; then
+		einfo "server/protocol.def was patched; running tools/make_requests"
+		tools/make_requests || die #432348
+	fi
 	eautoreconf
 	sed -i '/^UPDATE_DESKTOP_DATABASE/s:=.*:=true:' tools/Makefile.in || die
 	sed -i '/^MimeType/d' tools/wine.desktop || die #117785
